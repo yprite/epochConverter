@@ -143,10 +143,20 @@
 
         cities.forEach(({ city, lat, lng }) => {
             markers[city] = L.marker([lat, lng]).addTo(map)
-                .bindTooltip(`${city}: -`, { permanent: true, direction: "top", offset: [0, -10] })
-                .on('click', function() {
+                .bindTooltip(`${city}: -`, {
+                    permanent: true,
+                    direction: "top",
+                    offset: [0, -10],
+                    interactive: true  // 툴팁을 클릭 가능하게 만듦
+                })
+                .on('click', function () {
                     map.setView([lat, lng], 3);
                 });
+
+            // 툴팁 클릭 이벤트 추가
+            markers[city].getTooltip().addEventListener('click', function () {
+                map.setView([lat, lng], 3);
+            });
         });
 
         function updateDisplay(epochTime) {
@@ -197,7 +207,7 @@
 
         // 초기화 버튼을 맵 위에 추가
         L.Control.ResetView = L.Control.extend({
-            onAdd: function(map) {
+            onAdd: function (map) {
                 const btn = L.DomUtil.create('button', 'reset-view-btn');
                 btn.innerHTML = 'Reset View';
                 btn.style.backgroundColor = 'white';
@@ -205,19 +215,19 @@
                 btn.style.padding = '5px';
                 btn.style.cursor = 'pointer';
 
-                L.DomEvent.on(btn, 'click', function() {
+                L.DomEvent.on(btn, 'click', function () {
                     map.setView([0, 0], 2); // 초기 위치와 줌 레벨로 설정
                 });
 
                 return btn;
             },
 
-            onRemove: function(map) {
+            onRemove: function (map) {
                 // 아무것도 하지 않음
             }
         });
 
-        L.control.resetView = function(opts) {
+        L.control.resetView = function (opts) {
             return new L.Control.ResetView(opts);
         }
 
