@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Epoch & Unix Timestamp Conversion Tools with Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: auto;
+            padding: 20px;
+        }
+
+        .input-section,
+        .real-time-epoch {
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .real-time-epoch {
+            font-size: 24px;
+            font-weight: bold;
+            color: #d9534f;
+        }
+
+        .content-wrapper {
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .result-section {
+            font-size: 18px;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .result-section div {
+            margin: 10px 0;
+        }
+
+        #timezoneTable {
+            width: 100%;
+            border-collapse: collapse;
+            flex: 1;
+            min-width: 300px;
+            margin-left: 20px;
+        }
+
+        #timezoneTable th,
+        #timezoneTable td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        #map {
+            height: 500px;
+            margin-top: 20px;
+            width: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Epoch &amp; Timestamp Conversion Tools with Map</h1>
+
+        <div class="real-time-epoch">
+            Real-time Epoch Time (Seconds): <span id="realTimeEpoch">-</span>
+        </div>
+
+        <div class="input-section">
+            <label for="epochInput">Epoch Time (Seconds):</label>
+            <input type="number" id="epochInput" />
+            <button id="convertBtn">Convert</button>
+
+            <div class="mode-select">
+                <label><input type="radio" name="timeMode" id="modeGMT" value="GMT" checked /> GMT</label>
+                <label><input type="radio" name="timeMode" id="modeLocal" value="Local" /> Local</label>
+            </div>
+        </div>
+
+        <div class="content-wrapper">
+            <div class="result-section">
+                <div>GMT: <span id="resGMT"></span></div>
+                <div>Local Time: <span id="resLocalTime"></span></div>
+                <div>Local Time Zone: <span id="resLocalTZ"></span></div>
+                <div>ISO-8601: <span id="resISO8601"></span></div>
+                <div>Relative Time: <span id="resRelative"></span></div>
+                <div>Unix Timestamp (Seconds): <span id="resUnixSec"></span></div>
+                <div>Unix Timestamp (Milliseconds): <span id="resUnixMs"></span></div>
+            </div>
+
+            <table id="timezoneTable">
+                <thead>
+                    <tr>
+                        <th>City</th>
+                        <th>Time Zone</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        const cities = [
+            { city: "Honolulu", zone: "Pacific/Honolulu", lat: 21.3069, lng: -157.8583 },
+            { city: "Los Angeles", zone: "America/Los_Angeles", lat: 34.0522, lng: -118.2437 },
+            { city: "Mexico City", zone: "America/Mexico_City", lat: 19.4326, lng: -99.1332 },
+            { city: "New York", zone: "America/New_York", lat: 40.7128, lng: -74.0060 },
+            { city: "Brasília", zone: "America/Sao_Paulo", lat: -15.8267, lng: -47.9218 },
+            { city: "London", zone: "Europe/London", lat: 51.5074, lng: -0.1278 },
+            { city: "Berlin", zone: "Europe/Berlin", lat: 52.5200, lng: 13.4050 },
+            { city: "Moscow", zone: "Europe/Moscow", lat: 55.7558, lng: 37.6173 },
+            { city: "Dubai", zone: "Asia/Dubai", lat: 25.276987, lng: 55.296249 },
+            { city: "Mumbai", zone: "Asia/Kolkata", lat: 19.0760, lng: 72.8777 },
+            { city: "Beijing", zone: "Asia/Shanghai", lat: 39.9042, lng: 116.4074 },
+            { city: "Singapore", zone: "Asia/Singapore", lat: 1.3521, lng: 103.8198 },
+            { city: "Seoul", zone: "Asia/Seoul", lat: 37.5665, lng: 126.9780 },
+        ];
+
+        const epochInput = document.getElementById('epochInput');
+        const convertBtn = document.getElementById('convertBtn');
+        const timezoneTableBody = document.querySelector('#timezoneTable tbody');
+        const map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        const markers = {};
+
+        cities.forEach(({ city, lat, lng }) => {
+            markers[city] = L.marker([lat, lng]).addTo(map)
+                .bindTooltip(`${city}: -`, { permanent: true, direction: "top", offset: [0, -10] })
+                .on('click', function() {
+                    map.setView([lat, lng], 3);
+                });
+        });
+
+        function updateDisplay(epochTime) {
+            const date = new Date(epochTime * 1000);
+            timezoneTableBody.innerHTML = '';
+
+            cities.forEach(({ city, zone, lat, lng }) => {
+                const time = new Intl.DateTimeFormat('ko-KR', {
+                    timeZone: zone,
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false
+                }).format(date);
+
+                const row = `<tr><td>${city}</td><td>${zone}</td><td>${time}</td></tr>`;
+                timezoneTableBody.innerHTML += row;
+
+                markers[city].setTooltipContent(`${city}: ${time}`);
+            });
+
+            document.getElementById('resGMT').textContent = date.toUTCString();
+            document.getElementById('resLocalTime').textContent = date.toLocaleString();
+            document.getElementById('resLocalTZ').textContent = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            document.getElementById('resISO8601').textContent = date.toISOString();
+            document.getElementById('resRelative').textContent = `${Math.floor(Date.now() / 1000) - epochTime} seconds ago`;
+            document.getElementById('resUnixSec').textContent = epochTime;
+            document.getElementById('resUnixMs').textContent = epochTime * 1000;
+        }
+
+        convertBtn.addEventListener('click', () => {
+            const epochVal = parseInt(epochInput.value, 10);
+            if (!isNaN(epochVal)) updateDisplay(epochVal);
+        });
+
+        epochInput.value = Math.floor(Date.now() / 1000);
+        updateDisplay(epochInput.value);
+
+        // 실시간 Epoch Time 업데이트
+        const realTimeEpochEl = document.getElementById('realTimeEpoch');
+        setInterval(() => {
+            const currentEpoch = Math.floor(Date.now() / 1000);
+            realTimeEpochEl.textContent = currentEpoch;
+        }, 1000);
+
+        // 초기화 버튼을 맵 위에 추가
+        L.Control.ResetView = L.Control.extend({
+            onAdd: function(map) {
+                const btn = L.DomUtil.create('button', 'reset-view-btn');
+                btn.innerHTML = 'Reset View';
+                btn.style.backgroundColor = 'white';
+                btn.style.border = '2px solid #ccc';
+                btn.style.padding = '5px';
+                btn.style.cursor = 'pointer';
+
+                L.DomEvent.on(btn, 'click', function() {
+                    map.setView([0, 0], 2); // 초기 위치와 줌 레벨로 설정
+                });
+
+                return btn;
+            },
+
+            onRemove: function(map) {
+                // 아무것도 하지 않음
+            }
+        });
+
+        L.control.resetView = function(opts) {
+            return new L.Control.ResetView(opts);
+        }
+
+        L.control.resetView({ position: 'topright' }).addTo(map);
+    </script>
+</body>
+
+</html>
